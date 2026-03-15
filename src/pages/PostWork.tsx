@@ -75,7 +75,11 @@ export default function PostWork() {
 
     // Validate form
     if (!formData.title || !formData.description || !formData.category || !formData.budget || !formData.deadline) {
-      toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
+      toast({ title: "Error", description: "Please fill in all required fields.", variant: "destructive" });
+      return;
+    }
+    if (Number(formData.budget) < 39) {
+      toast({ title: "Budget too low", description: "Please enter a minimum amount of ₹39.", variant: "destructive" });
       return;
     }
 
@@ -126,10 +130,15 @@ export default function PostWork() {
           body: form,
         }).then(async (res) => {
           if (!res.ok) {
-            let msg = "Failed to post work";
+            let msg = "Failed to post work. Please try again.";
             try {
               const data = await res.json();
+              // Show the backend's actual validation message if available
               msg = data.message || msg;
+              // Make Mongoose validation errors readable
+              if (data.error && data.error.includes("Path `budget`")) {
+                msg = "Budget must be at least ₹39.";
+              }
             } catch {
               // ignore parse error
             }

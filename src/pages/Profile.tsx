@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL, authHeader } from "@/lib/api";
 
 export default function Profile() {
   const [editing, setEditing] = useState(false);
@@ -30,12 +31,13 @@ export default function Profile() {
           navigate("/login");
           return;
         }
-        const response = await fetch("/api/profile/me", {
+        const response = await fetch(`${API_BASE_URL}/api/profile/me`, {
           method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { ...authHeader() },
         });
         if (!response.ok) {
-          throw new Error("Failed to load profile");
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to load profile. Please try again.");
         }
         const data = await response.json();
         setProfile(data);
@@ -106,16 +108,17 @@ export default function Profile() {
       }
 
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/profile/me", {
+      const response = await fetch(`${API_BASE_URL}/api/profile/me`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...authHeader(),
         },
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update profile");
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || "Failed to update profile. Please try again.");
       }
 
       const updatedData = await response.json();
