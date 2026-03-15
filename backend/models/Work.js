@@ -17,7 +17,7 @@ const workSchema = new mongoose.Schema({
   budget: {
     type: Number,
     required: [true, "Budget is required"],
-    min: [50, "Budget must be at least 50"],
+    min: [39, "Budget must be at least ₹39"],
   },
   deadline: {
     type: Date,
