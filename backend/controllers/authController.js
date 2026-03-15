@@ -6,6 +6,8 @@ const Chat = require("../models/Chat");
 const Message = require("../models/Message");
 const Notification = require("../models/Notification");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const { verifyAttendanceCredentials } = require("../services/attendanceService");
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -14,28 +16,136 @@ const generateToken = (id) => {
   });
 };
 
+const generateVerificationToken = (payload) => {
+  return jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: "10m",
+  });
+};
+
+const toSafeUser = (user) => ({
+  id: user._id,
+  rollNumber: user.rollNumber,
+  fullName: user.fullName || "",
+  college: user.college || "JNTUA",
+  branch: user.branch || "",
+  year: user.year || user.classYear || "",
+  email: user.email || "",
+  phone: user.phoneNumber || "",
+  availableForWork: !!user.availableForWork,
+});
+
+const buildRandomPassword = () => crypto.randomBytes(24).toString("hex");
+
+const mergeAttendanceIntoUser = (user, student) => {
+  if (!user.fullName && student.fullName) user.fullName = student.fullName;
+  user.college = "JNTUA";
+  if (!user.branch && student.branch) user.branch = student.branch;
+  if (!user.classYear && student.year) user.classYear = student.year;
+  if (!user.year && student.year) user.year = student.year;
+};
+
+// @desc    Verify JNTUA attendance credentials
+// @route   POST /api/auth/verify-attendance
+// @access  Public
+const verifyAttendance = async (req, res) => {
+  try {
+    const { rollNumber, attendancePassword } = req.body;
+
+    if (!rollNumber || !attendancePassword) {
+      return res.status(400).json({ message: "Please provide roll number and attendance password" });
+    }
+
+    const student = await verifyAttendanceCredentials(rollNumber, attendancePassword);
+    const user = await User.findOne({ rollNumber: student.rollNumber });
+
+    const verificationToken = generateVerificationToken({
+      purpose: "attendance-verification",
+      rollNumber: student.rollNumber,
+      adminNumber: student.adminNumber || "",
+      fullName: student.fullName || "",
+      branch: student.branch || "",
+      year: student.year || "",
+      college: "JNTUA",
+    });
+
+    if (user) {
+      return res.status(200).json({
+        message: "Attendance verified. Continue with StudentsConnect password.",
+        token: verificationToken,
+        verificationToken,
+        requiresPasswordSetup: false,
+        user: toSafeUser(user),
+      });
+    }
+
+    return res.status(200).json({
+      message: "Attendance verified. Set your StudentsConnect password to create account.",
+      token: verificationToken,
+      verificationToken,
+      requiresPasswordSetup: true,
+      user: {
+        rollNumber: student.rollNumber,
+        adminNumber: student.adminNumber || "",
+        fullName: student.fullName || "",
+        college: "JNTUA",
+        branch: student.branch || "",
+        year: student.year || "",
+      },
+    });
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    const message = statusCode === 401 ? "Invalid attendance credentials" : "Attendance verification failed";
+    return res.status(statusCode).json({ message });
+  }
+};
+
 // @desc    Register a new user
 // @route   POST /api/auth/signup
 // @access  Public
 const signup = async (req, res) => {
   try {
-    const { rollNumber, password } = req.body;
+    const { rollNumber, password, verificationToken } = req.body;
 
-    if (!rollNumber || !password) {
-      return res.status(400).json({ message: "Please provide roll number and password" });
+    if (!rollNumber || !password || !verificationToken) {
+      return res.status(400).json({ message: "Please verify attendance before signup" });
     }
 
-    const userExists = await User.findOne({ rollNumber });
+    let verified;
+    try {
+      verified = jwt.verify(verificationToken, process.env.JWT_SECRET);
+    } catch {
+      return res.status(401).json({ message: "Attendance verification expired. Please verify again." });
+    }
+
+    if (verified.purpose !== "attendance-verification") {
+      return res.status(401).json({ message: "Invalid attendance verification token" });
+    }
+
+    const normalizedRoll = String(rollNumber).trim().toUpperCase();
+    if (normalizedRoll !== String(verified.rollNumber || "").trim().toUpperCase()) {
+      return res.status(400).json({ message: "Roll number mismatch with verified attendance" });
+    }
+
+    const userExists = await User.findOne({ rollNumber: normalizedRoll });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const user = await User.create({ rollNumber, password });
+    const user = await User.create({
+      rollNumber: normalizedRoll,
+      password,
+      fullName: verified.fullName || "",
+      college: "JNTUA",
+      branch: verified.branch || "",
+      classYear: verified.year || "",
+      year: verified.year || "",
+    });
 
     if (user) {
       res.status(201).json({
         message: "User created successfully",
         token: generateToken(user._id),
+        user: toSafeUser(user),
       });
     } else {
       res.status(400).json({ message: "Invalid user data" });
@@ -51,25 +161,44 @@ const signup = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
   try {
-    const { rollNumber, password } = req.body;
+    const { rollNumber, username, attendancePassword, password } = req.body;
+    const loginId = (rollNumber || username || "").toString();
+    const loginSecret = (attendancePassword || password || "").toString();
 
-    if (!rollNumber || !password) {
-      return res.status(400).json({ message: "Please provide roll number and password" });
+    if (!loginId || !loginSecret) {
+      return res.status(400).json({ message: "Please provide roll number and attendance password" });
     }
 
-    const user = await User.findOne({ rollNumber });
+    let student;
+    try {
+      student = await verifyAttendanceCredentials(loginId, loginSecret);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      const message = statusCode === 401 ? "Invalid attendance credentials" : "Attendance verification failed";
+      return res.status(statusCode).json({ message });
+    }
+
+    let user = await User.findOne({ rollNumber: student.rollNumber });
+
     if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid password" });
+      user = await User.create({
+        rollNumber: student.rollNumber,
+        password: buildRandomPassword(),
+        fullName: student.fullName || "",
+        college: "JNTUA",
+        branch: student.branch || "",
+        classYear: student.year || "",
+        year: student.year || "",
+      });
+    } else {
+      mergeAttendanceIntoUser(user, student);
+      await user.save();
     }
 
     res.status(200).json({
       message: "Login successful",
       token: generateToken(user._id),
+      user: toSafeUser(user),
     });
   } catch (error) {
     console.error(error);
@@ -147,4 +276,4 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-module.exports = { signup, login, changePassword, deleteAccount };
+module.exports = { verifyAttendance, signup, login, changePassword, deleteAccount };

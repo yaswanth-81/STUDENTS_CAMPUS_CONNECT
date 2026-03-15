@@ -18,13 +18,30 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  college: {
+    type: String,
+    trim: true,
+    default: "JNTUA",
+  },
   email: {
     type: String,
     trim: true,
+    unique: true,
+    sparse: true,
+    set: (value) => {
+      if (value === undefined || value === null) return null;
+      const trimmed = String(value).trim();
+      return trimmed === "" ? null : trimmed.toLowerCase();
+    },
   },
   phoneNumber: {
     type: String,
     trim: true,
+    set: (value) => {
+      if (value === undefined || value === null) return null;
+      const trimmed = String(value).trim();
+      return trimmed === "" ? null : trimmed;
+    },
   },
   branch: {
     type: String,
@@ -35,6 +52,10 @@ const userSchema = new mongoose.Schema({
     trim: true,
   },
   classYear: {
+    type: String,
+    trim: true,
+  },
+  year: {
     type: String,
     trim: true,
   },
@@ -62,6 +83,17 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre("save", async function () {
+  if (this.isModified("rollNumber") && this.rollNumber) {
+    this.rollNumber = this.rollNumber.trim().toUpperCase();
+  }
+
+  if (this.isModified("year") && this.year && !this.classYear) {
+    this.classYear = this.year;
+  }
+  if (this.isModified("classYear") && this.classYear && !this.year) {
+    this.year = this.classYear;
+  }
+
   if (!this.isModified("password")) {
     return;
   }

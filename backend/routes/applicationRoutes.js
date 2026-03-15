@@ -1,12 +1,16 @@
 const express = require("express");
 const router = express.Router();
 const {
+  getMyApplications,
   getApplicationsForWork,
   acceptApplication,
   assignApplication,
   assignInterested,
 } = require("../controllers/applicationController");
 const { protect } = require("../middleware/authMiddleware");
+
+// Get current user's applications
+router.get("/my", protect, getMyApplications);
 
 // Get list of applications for a work (owner only)
 router.get("/work/:workId", protect, getApplicationsForWork);

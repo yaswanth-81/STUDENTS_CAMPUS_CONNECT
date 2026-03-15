@@ -9,38 +9,45 @@ import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
 
 export default function Login() {
-  const [showPass, setShowPass] = useState(false);
+  const [showAttendancePass, setShowAttendancePass] = useState(false);
   const [rollNumber, setRollNumber] = useState("");
-  const [password, setPassword] = useState("");
+  const [attendancePassword, setAttendancePassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!rollNumber || !password) {
-      toast({ title: "Missing fields", description: "Please enter roll number and password.", variant: "destructive" });
+    if (!rollNumber || !attendancePassword) {
+      toast({ title: "Missing fields", description: "Please enter roll number and attendance password.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
-      const data = await apiFetch<{ message: string; token: string }>("/api/auth/login", {
+      const data = await apiFetch<{
+        message: string;
+        token: string;
+        user: { fullName?: string };
+      }>("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rollNumber, password }),
+        body: JSON.stringify({ rollNumber: rollNumber.toUpperCase(), attendancePassword }),
       });
 
       if (data?.token) {
         localStorage.setItem("token", data.token);
-        toast({ title: "Welcome back!", description: data.message });
+        toast({
+          title: "Login successful",
+          description: data.user?.fullName ? `Welcome, ${data.user.fullName}` : "Attendance verified successfully.",
+        });
         navigate("/dashboard");
       } else {
         toast({ title: "Login failed", description: "Invalid response from server.", variant: "destructive" });
       }
     } catch (err: any) {
-      toast({ title: "Login failed", description: err?.message || "Could not connect to server.", variant: "destructive" });
+      toast({ title: "Login failed", description: err?.message || "Invalid attendance credentials", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -78,46 +85,42 @@ export default function Login() {
           </Link>
 
           <h1 className="font-display text-2xl font-bold mb-1">Log in</h1>
-          <p className="text-sm text-muted-foreground mb-6">Enter your credentials to continue</p>
+          <p className="text-sm text-muted-foreground mb-6">Login only with your official JNTUA attendance credentials</p>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={handleLogin}>
             <div className="space-y-1.5">
-              <Label htmlFor="rollNumber">Roll Number</Label>
+              <Label htmlFor="attendanceRoll">Roll Number</Label>
               <Input
-                id="rollNumber"
+                id="attendanceRoll"
                 placeholder="e.g. 21A91A0501"
                 value={rollNumber}
-                onChange={(e) => setRollNumber(e.target.value)}
+                onChange={(e) => setRollNumber(e.target.value.toUpperCase())}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="attendancePassword">Attendance Password</Label>
               <div className="relative">
                 <Input
-                  id="password"
-                  type={showPass ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  id="attendancePassword"
+                  type={showAttendancePass ? "text" : "password"}
+                  placeholder="Attendance portal password"
+                  value={attendancePassword}
+                  onChange={(e) => setAttendancePassword(e.target.value)}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPass(!showPass)}
+                  onClick={() => setShowAttendancePass(!showAttendancePass)}
                   className="absolute right-3 top-2.5 text-muted-foreground"
                 >
-                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showAttendancePass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
             <Button type="submit" className="w-full gradient-bg text-primary-foreground border-0" disabled={loading}>
-              {loading ? "Logging in..." : "Log in"}
+              {loading ? "Verifying..." : "Login with JNTUA"}
             </Button>
           </form>
 
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            Don't have an account?{" "}
-            <Link to="/signup" className="text-primary hover:underline font-medium">Sign up</Link>
-          </p>
         </motion.div>
       </div>
     </div>

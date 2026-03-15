@@ -203,13 +203,11 @@ const updateOrderStatus = async (req, res) => {
       // Reopen the work so others can apply again
       if (order.workId) {
         await Work.findByIdAndUpdate(order.workId._id || order.workId, {
-          $set: { status: "open" },
+          $set: { status: "open", applications: [] },
         });
-        // Also clear accepted/rejected applications so they can apply fresh
-        await Application.updateMany(
-          { workId: order.workId._id || order.workId },
-          { $set: { status: "pending" } }
-        );
+
+        // Fully reset applicants list for this job; everyone must apply again from scratch.
+        await Application.deleteMany({ workId: order.workId._id || order.workId });
       }
 
       // Notify the other party

@@ -85,6 +85,7 @@ export default function PostWork() {
 
     setLoading(true);
     try {
+      let targetWorkId: string | null = isEdit ? String(jobToEdit?._id || "") : null;
       const token = localStorage.getItem("token");
       if (!token) {
         toast({ title: "Error", description: "You must be logged in to post work", variant: "destructive" });
@@ -122,29 +123,30 @@ export default function PostWork() {
         const tokenHeader = authHeader();
         const url = `${API_BASE_URL || ""}/api/work`;
 
-        await fetch(url, {
+        const response = await fetch(url, {
           method: "POST",
           headers: {
             ...(tokenHeader.Authorization ? { Authorization: tokenHeader.Authorization } : {}),
           },
           body: form,
-        }).then(async (res) => {
-          if (!res.ok) {
-            let msg = "Failed to post work. Please try again.";
-            try {
-              const data = await res.json();
-              // Show the backend's actual validation message if available
-              msg = data.message || msg;
-              // Make Mongoose validation errors readable
-              if (data.error && data.error.includes("Path `budget`")) {
-                msg = "Budget must be at least ₹39.";
-              }
-            } catch {
-              // ignore parse error
-            }
-            throw new Error(msg);
-          }
         });
+
+        const responseData = await response.json().catch(() => null);
+        if (!response.ok) {
+          let msg = "Failed to post work. Please try again.";
+          if (responseData) {
+            msg = responseData.message || msg;
+            if (Array.isArray(responseData.missingFields) && responseData.missingFields.length > 0) {
+              msg = `${msg} Missing: ${responseData.missingFields.join(", ")}`;
+            }
+            if (responseData.error && responseData.error.includes("Path `budget`")) {
+              msg = "Budget must be at least ₹39.";
+            }
+          }
+          throw new Error(msg);
+        }
+
+        targetWorkId = responseData?.work?._id ? String(responseData.work._id) : targetWorkId;
       }
       toast({
         title: isEdit ? "Task Updated!" : "Task Posted!",
@@ -152,7 +154,11 @@ export default function PostWork() {
           ? "Your task details have been updated."
           : "Your task has been published. Students will start applying soon.",
       });
-      navigate("/dashboard/find-work");
+      if (targetWorkId) {
+        navigate(`/dashboard/my-services/${targetWorkId}/applicants`);
+      } else {
+        navigate("/dashboard/my-services");
+      }
     } catch (error: any) {
       console.error("Error posting work:", error);
       toast({ title: "Error", description: error.message || "Failed to post work", variant: "destructive" });

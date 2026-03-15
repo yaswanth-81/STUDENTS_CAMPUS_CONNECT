@@ -5,6 +5,29 @@ const Chat = require("../models/Chat");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
 
+// @desc    Get current user's applications
+// @route   GET /api/application/my
+// @access  Private
+const getMyApplications = async (req, res) => {
+  try {
+    const applications = await Application.find({ applicantId: req.userId })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "workId",
+        select: "title budget deadline category status postedBy",
+        populate: {
+          path: "postedBy",
+          select: "fullName rollNumber",
+        },
+      });
+
+    res.status(200).json({ count: applications.length, applications });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // @desc    Get all applications for a specific work (with applicant details)
 // @route   GET /api/application/work/:workId
 // @access  Private (only work owner)
@@ -55,6 +78,10 @@ const acceptApplication = async (req, res) => {
     // Only work owner can accept
     if (work.postedBy.toString() !== req.userId) {
       return res.status(403).json({ message: "Not authorized to accept this application" });
+    }
+
+    if (String(application.applicantId) === String(work.postedBy)) {
+      return res.status(400).json({ message: "Cannot assign the job owner as worker" });
     }
 
     // If already accepted, return existing order/chat
@@ -145,6 +172,10 @@ const assignApplication = async (req, res) => {
 
     if (work.postedBy.toString() !== req.userId) {
       return res.status(403).json({ message: "Not authorized to assign for this job" });
+    }
+
+    if (String(application.applicantId) === String(work.postedBy)) {
+      return res.status(400).json({ message: "Cannot assign the job owner as worker" });
     }
 
     if (application.status === "accepted") {
@@ -309,6 +340,7 @@ const assignInterested = async (req, res) => {
 };
 
 module.exports = {
+  getMyApplications,
   getApplicationsForWork,
   acceptApplication,
   assignApplication,

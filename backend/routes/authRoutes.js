@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { signup, login, changePassword, deleteAccount } = require("../controllers/authController");
+const { verifyAttendance, signup, login, changePassword, deleteAccount } = require("../controllers/authController");
 const { protect } = require("../middleware/authMiddleware");
+
+// POST /api/auth/verify-attendance
+router.post("/verify-attendance", verifyAttendance);
 
 // POST /api/auth/signup
 router.post("/signup", signup);

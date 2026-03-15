@@ -1,5 +1,11 @@
 const User = require("../models/User");
 
+function normalizeOptional(value) {
+  if (value === undefined || value === null) return undefined;
+  const trimmed = String(value).trim();
+  return trimmed === "" ? null : trimmed;
+}
+
 // @desc    Get current user's profile
 // @route   GET /api/profile/me
 // @access  Private
@@ -35,7 +41,11 @@ const updateMyProfile = async (req, res) => {
     const updates = {};
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) {
-        updates[key] = req.body[key];
+        if (["email", "phoneNumber", "fullName", "branch", "course", "classYear", "semester"].includes(key)) {
+          updates[key] = normalizeOptional(req.body[key]);
+        } else {
+          updates[key] = req.body[key];
+        }
       }
     }
 
@@ -65,6 +75,13 @@ const updateMyProfile = async (req, res) => {
     res.status(200).json({ message: "Profile updated", user });
   } catch (error) {
     console.error(error);
+    if (error?.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0] || "field";
+      return res.status(400).json({
+        message: `${duplicateField} is already used by another account`,
+        field: duplicateField,
+      });
+    }
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

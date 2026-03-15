@@ -28,6 +28,7 @@ export default function ApplyWork() {
   const [work, setWork] = useState<WorkWithOwner | null>(null);
   const [owner, setOwner] = useState<any | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
+  const [myApplicationStatus, setMyApplicationStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,6 +44,15 @@ export default function ApplyWork() {
           headers: { ...authHeader() },
         }).catch(() => null);
         if (me?._id) setMeId(me._id);
+
+        // Check my latest application status for this work to control button state.
+        const myApps = await apiFetch<{ applications: any[] }>("/api/application/my", {
+          headers: { ...authHeader() },
+        }).catch(() => ({ applications: [] }));
+        const mine = (myApps.applications || []).find(
+          (a: any) => (a.workId?._id || a.workId) === workId
+        );
+        setMyApplicationStatus(mine?.status || null);
 
         // Load full owner profile from users collection
         if (workRes.postedBy?._id) {
@@ -63,8 +73,8 @@ export default function ApplyWork() {
     load();
   }, [workId, toast]);
 
-  const hasApplied =
-    !!meId && !!work?.applications?.some((a: any) => a.userId?.toString() === meId);
+  const hasApplied = myApplicationStatus === "pending" || myApplicationStatus === "accepted";
+  const isOwnJob = !!meId && String(work?.postedBy?._id) === String(meId);
 
   const handleApply = async () => {
     if (!workId) return;
@@ -236,11 +246,19 @@ export default function ApplyWork() {
         <Button
           size="lg"
           className="gradient-bg text-primary-foreground border-0 gap-2"
-          disabled={submitting || hasApplied}
+          disabled={submitting || hasApplied || isOwnJob}
           onClick={handleApply}
         >
           <Send className="h-4 w-4" />
-          {hasApplied ? "Already Applied" : submitting ? "Sending..." : "Apply Now"}
+          {isOwnJob
+            ? "Cannot Apply To Own Job"
+            : hasApplied
+              ? "Already Applied"
+              : submitting
+                ? "Sending..."
+                : myApplicationStatus === "assigned_to_others"
+                  ? "Apply Again"
+                  : "Apply Now"}
         </Button>
       </div>
     </motion.div>

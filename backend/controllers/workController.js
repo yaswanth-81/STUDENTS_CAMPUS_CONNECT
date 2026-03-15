@@ -1,6 +1,23 @@
 const Work = require("../models/Work");
 const Application = require("../models/Application");
 const Notification = require("../models/Notification");
+const User = require("../models/User");
+
+function normalizeDeadlineInput(rawDeadline) {
+  if (!rawDeadline) return null;
+  const str = String(rawDeadline).trim();
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    return new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+  }
+
+  const parsed = new Date(str);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
 
 // @desc    Create a new work post
 // @route   POST /api/work
@@ -8,6 +25,25 @@ const Notification = require("../models/Notification");
 const createWork = async (req, res) => {
   try {
     const { title, description, category, budget, deadline } = req.body;
+
+    const me = await User.findById(req.userId).select("fullName college branch classYear year phoneNumber");
+    if (!me) {
+      return res.status(401).json({ message: "User not found. Please login again." });
+    }
+
+    const missing = [];
+    if (!me.fullName) missing.push("fullName");
+    if (!me.college) missing.push("college");
+    if (!me.branch) missing.push("branch");
+    if (!me.classYear && !me.year) missing.push("year");
+    if (!me.phoneNumber) missing.push("phoneNumber");
+
+    if (missing.length > 0) {
+      return res.status(400).json({
+        message: "Please complete your profile before posting work.",
+        missingFields: missing,
+      });
+    }
 
     // Validate required fields
     if (!title || !description || !category || !budget || !deadline) {
@@ -33,7 +69,7 @@ const createWork = async (req, res) => {
       description,
       category,
       budget: Number(budget),
-      deadline: new Date(deadline),
+      deadline: normalizeDeadlineInput(deadline),
       postedBy: req.userId, // set by auth middleware
       attachments,
     });
@@ -55,10 +91,13 @@ const getAllWork = async (req, res) => {
   try {
     const { category, search, status, includeAll } = req.query;
 
-    // Delete expired open jobs so they no longer appear anywhere
+    // Delete only jobs overdue before today (UTC), keeping today's jobs visible.
+    const startOfTodayUtc = new Date();
+    startOfTodayUtc.setUTCHours(0, 0, 0, 0);
+
     await Work.deleteMany({
       status: "open",
-      deadline: { $lt: new Date() },
+      deadline: { $lt: startOfTodayUtc },
     });
 
     // Build filter object
@@ -90,8 +129,13 @@ const getAllWork = async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const me = await User.findById(decoded.id).select("college");
         if (me?.college) {
-          // Find all users with same college, restrict results
-          const sameCollegeUsers = await User.find({ college: me.college }).select("_id");
+          // Include legacy users with empty college in JNTUA feed to avoid hidden posts.
+          const collegeFilter =
+            String(me.college).toUpperCase() === "JNTUA"
+              ? { $or: [{ college: me.college }, { college: null }, { college: "" }] }
+              : { college: me.college };
+
+          const sameCollegeUsers = await User.find(collegeFilter).select("_id");
           filter.postedBy = { $in: sameCollegeUsers.map((u) => u._id) };
         }
       } catch {
@@ -139,6 +183,11 @@ const getWorkApplicants = async (req, res) => {
     const work = await Work.findById(workId);
     if (!work) {
       return res.status(404).json({ message: "Work post not found" });
+    }
+
+    // Owner cannot apply to their own job.
+    if (String(work.postedBy) === String(req.userId)) {
+      return res.status(400).json({ message: "You cannot apply to your own job" });
     }
     if (work.postedBy.toString() !== userId) {
       return res.status(403).json({ message: "Not authorized to view applicants for this work" });
@@ -203,7 +252,7 @@ const updateWork = async (req, res) => {
     if (description) work.description = description;
     if (category) work.category = category;
     if (budget) work.budget = Number(budget);
-    if (deadline) work.deadline = new Date(deadline);
+    if (deadline) work.deadline = normalizeDeadlineInput(deadline);
     if (status) work.status = status;
 
     // If a new attachment is uploaded, replace existing attachments
@@ -272,14 +321,53 @@ const applyForWork = async (req, res) => {
       return res.status(404).json({ message: "Work post not found" });
     }
 
-    // Prevent duplicate applications via unique index as well as manual check
+    // Owner cannot apply to their own job.
+    if (String(work.postedBy) === String(req.userId)) {
+      return res.status(400).json({ message: "You cannot apply to your own job" });
+    }
+
+    // Handle duplicate applications via unique index + status-aware reuse
     const existing = await Application.findOne({
       workId: work._id,
       applicantId: req.userId,
     });
 
     if (existing) {
-      return res.status(400).json({ message: "You have already applied for this work" });
+      // If already pending for this open job, avoid duplicate apply.
+      if (existing.status === "pending") {
+        return res.status(400).json({ message: "You have already applied for this work" });
+      }
+
+      // Reopen previous application entry for statuses like assigned_to_others/rejected.
+      existing.status = "pending";
+      if (message !== undefined) {
+        existing.message = message;
+      }
+      existing.createdAt = new Date();
+      await existing.save();
+
+      // Ensure this applicant appears in lightweight count list exactly once.
+      const alreadyTracked = (work.applications || []).some(
+        (a) => String(a.userId) === String(req.userId)
+      );
+      if (!alreadyTracked) {
+        work.applications.push({
+          userId: req.userId,
+          appliedAt: new Date(),
+        });
+        await work.save();
+      }
+
+      await Notification.create({
+        userId: work.postedBy,
+        type: "application",
+        message: `Updated application for "${work.title}"`,
+      });
+
+      return res.status(200).json({
+        message: "Application submitted successfully",
+        application: existing,
+      });
     }
 
     const application = await Application.create({
