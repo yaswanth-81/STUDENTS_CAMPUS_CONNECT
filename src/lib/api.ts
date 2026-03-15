@@ -3,7 +3,7 @@ type ApiErrorPayload = {
   error?: string;
 };
 
-const rawBase = "https://students-campus-connect.onrender.com/api";
+const rawBase = "https://students-campus-connect.onrender.com";
 
 export const API_BASE_URL = rawBase.replace(/\/$/, "");
 
