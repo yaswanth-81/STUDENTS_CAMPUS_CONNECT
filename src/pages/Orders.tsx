@@ -8,16 +8,6 @@ import { apiFetch, authHeader } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_CONFIG: Record<string, { label: string; icon: any; className: string }> = {
-  request_sent: {
-    label: "Request Sent",
-    icon: Clock,
-    className: "bg-amber-500/10 text-amber-600 border-amber-500/30",
-  },
-  assigned_to_others: {
-    label: "Assigned To Others",
-    icon: XCircle,
-    className: "bg-slate-500/10 text-slate-600 border-slate-500/30",
-  },
   pending: {
     label: "In Progress",
     icon: Clock,
@@ -40,16 +30,6 @@ const STATUS_CONFIG: Record<string, { label: string; icon: any; className: strin
   },
 };
 
-function getStatusConfig(status: string, paymentStatus?: string) {
-  if (status === "completed" && (paymentStatus ?? "unpaid") === "unpaid") {
-    return {
-      ...STATUS_CONFIG.completed,
-      label: "Payment Pending",
-    };
-  }
-  return STATUS_CONFIG[status] || STATUS_CONFIG.active;
-}
-
 export default function Orders() {
   const [tab, setTab] = useState("all");
   const [orders, setOrders] = useState<any[]>([]);
@@ -62,9 +42,8 @@ export default function Orders() {
       try {
         setLoading(true);
         const headers = { ...authHeader() };
-        const [data, myApplications, me] = await Promise.all([
+        const [data, me] = await Promise.all([
           apiFetch<{ orders: any[] }>("/api/orders/my", { headers }),
-          apiFetch<{ applications: any[] }>("/api/application/my", { headers }).catch(() => ({ applications: [] })),
           apiFetch<{ _id: string }>("/api/profile/me", { headers }).catch(() => null),
         ]);
 
@@ -79,20 +58,7 @@ export default function Orders() {
             })
           : rawOrders;
 
-        const mappedApplications = (myApplications.applications || [])
-          .filter((app: any) => ["pending", "assigned_to_others"].includes(app.status) && app.workId)
-          .map((app: any) => ({
-            _id: `application-${app._id}`,
-            kind: "application",
-            status: app.status === "pending" ? "request_sent" : "assigned_to_others",
-            workId: app.workId,
-            clientId: app.workId?.postedBy,
-            price: app.workId?.budget ?? 0,
-            deadline: app.workId?.deadline,
-            createdAt: app.createdAt,
-          }));
-
-        setOrders([...mappedApplications, ...workerOrders]);
+        setOrders(workerOrders);
       } catch (err: any) {
         toast({ title: "Error", description: err?.message || "Failed to load orders", variant: "destructive" });
       } finally {
@@ -106,11 +72,11 @@ export default function Orders() {
     tab === "all"
       ? orders
       : tab === "active"
-      ? orders.filter((o) => o.status === "active" || o.status === "pending" || o.status === "request_sent")
+      ? orders.filter((o) => o.status === "active" || o.status === "pending")
       : tab === "completed"
       ? orders.filter((o) => o.status === "completed")
       : tab === "cancelled"
-      ? orders.filter((o) => o.status === "cancelled" || o.status === "assigned_to_others")
+      ? orders.filter((o) => o.status === "cancelled")
       : orders;
 
   return (
@@ -140,7 +106,7 @@ export default function Orders() {
             <p className="text-center text-muted-foreground py-12">No orders found.</p>
           ) : (
             filtered.map((order, i) => {
-              const config = getStatusConfig(order.status, order.paymentStatus);
+              const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.active;
               const Icon = config.icon;
               const title = order.workId?.title || "Order";
               const deadline = order.deadline ? new Date(order.deadline).toLocaleDateString() : "";
@@ -154,8 +120,8 @@ export default function Orders() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  {order.kind === "application" ? (
-                    <div className="p-4 rounded-xl border border-border bg-card flex flex-col sm:flex-row sm:items-center gap-3">
+                  <Link to={`/dashboard/orders/${order._id}`}>
+                    <div className="p-4 rounded-xl border border-border bg-card hover:card-shadow-hover transition-all flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <Badge variant="outline" className={config.className}>
@@ -171,26 +137,7 @@ export default function Orders() {
                       </div>
                       <p className="font-display font-bold text-sm shrink-0">₹{price}</p>
                     </div>
-                  ) : (
-                    <Link to={`/dashboard/orders/${order._id}`}>
-                      <div className="p-4 rounded-xl border border-border bg-card hover:card-shadow-hover transition-all flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className={config.className}>
-                              <Icon className="h-3 w-3 mr-1" />
-                              {config.label}
-                            </Badge>
-                          </div>
-                          <p className="font-medium text-sm truncate">{title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            From: {clientName}
-                            {deadline ? ` · Due: ${deadline}` : ""}
-                          </p>
-                        </div>
-                        <p className="font-display font-bold text-sm shrink-0">₹{price}</p>
-                      </div>
-                    </Link>
-                  )}
+                  </Link>
                 </motion.div>
               );
             })

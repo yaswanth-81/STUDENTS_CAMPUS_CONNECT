@@ -9,24 +9,12 @@ import { CATEGORIES } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch, authHeader } from "@/lib/api";
 
-function decodeJwtUserId(token: string | null): string | null {
-  if (!token) return null;
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return null;
-    const json = JSON.parse(atob(payload));
-    return json?.id ? String(json.id) : null;
-  } catch {
-    return null;
-  }
-}
-
 export default function FindWork() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [workPosts, setWorkPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(() => decodeJwtUserId(localStorage.getItem("token")));
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -146,6 +134,7 @@ export default function FindWork() {
               {workPosts
                 .filter(
                   (job) =>
+                    // Hide jobs posted by the currently logged-in user
                     !currentUserId ||
                     !job.postedBy ||
                     job.postedBy._id !== currentUserId

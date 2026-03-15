@@ -93,7 +93,7 @@ function Bubble({ msg, myId }: { msg: Msg; myId: string }) {
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({ status, paymentStatus }: { status: string; paymentStatus?: string }) {
+function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     pending: "bg-amber-500/15 text-amber-600 border-amber-500/30",
     active: "bg-blue-500/15 text-blue-600 border-blue-500/30",
@@ -106,12 +106,9 @@ function StatusBadge({ status, paymentStatus }: { status: string; paymentStatus?
     completed: "Completed",
     cancelled: "Cancelled",
   };
-
-  const isPaymentPending = status === "completed" && (paymentStatus ?? "unpaid") === "unpaid";
-
   return (
     <Badge variant="outline" className={map[status] || "bg-muted"}>
-      {isPaymentPending ? "Payment Pending" : label[status] || status}
+      {label[status] || status}
     </Badge>
   );
 }
@@ -152,9 +149,6 @@ export default function OrderDetails() {
       });
       setData(res);
       setMessages(res.messages || []);
-      if (res?.myId) {
-        setMyId(String(res.myId));
-      }
     } catch (err: any) {
       if (!silent) {
         toast({ title: "Error", description: err?.message || "Failed to load order", variant: "destructive" });
@@ -239,8 +233,8 @@ export default function OrderDetails() {
   const clientUser = data.client;
   const workerUser = data.worker;
 
-  const clientIdStr = String(clientUser?._id ?? order?.clientId?._id ?? order?.clientId ?? "");
-  const workerIdStr = String(workerUser?._id ?? order?.workerId?._id ?? order?.workerId ?? "");
+  const clientIdStr = String(clientUser?._id || "");
+  const workerIdStr = String(workerUser?._id || "");
 
   const isClient = myId !== "" && clientIdStr === myId;
   const isWorker = myId !== "" && workerIdStr === myId;
@@ -270,7 +264,7 @@ export default function OrderDetails() {
           </h1>
           <p className="text-xs text-muted-foreground font-mono">{orderId}</p>
         </div>
-        <StatusBadge status={orderStatus} paymentStatus={paymentStatus} />
+        <StatusBadge status={orderStatus} />
       </div>
 
       <div className="grid lg:grid-cols-5 gap-5">

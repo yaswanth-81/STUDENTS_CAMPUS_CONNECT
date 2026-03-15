@@ -3,7 +3,7 @@ type ApiErrorPayload = {
   error?: string;
 };
 
-const rawBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+const rawBase = "https://students-campus-connect.onrender.com";
 
 export const API_BASE_URL = rawBase.replace(/\/$/, "");
 

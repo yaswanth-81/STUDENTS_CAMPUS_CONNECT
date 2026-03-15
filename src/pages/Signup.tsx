@@ -10,63 +10,17 @@ import { apiFetch } from "@/lib/api";
 
 export default function Signup() {
   const [showPass, setShowPass] = useState(false);
-  const [showAttendancePass, setShowAttendancePass] = useState(false);
   const [rollNumber, setRollNumber] = useState("");
-  const [attendancePassword, setAttendancePassword] = useState("");
   const [password, setPassword] = useState("");
-  const [verificationToken, setVerificationToken] = useState("");
-  const [verifiedName, setVerifiedName] = useState("");
-  const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleVerifyAttendance = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!rollNumber || !attendancePassword) {
-      toast({ title: "Missing fields", description: "Please enter roll number and attendance password.", variant: "destructive" });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const data = await apiFetch<{
-        message: string;
-        verificationToken: string;
-        requiresPasswordSetup: boolean;
-        user: { fullName?: string };
-      }>("/api/auth/verify-attendance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rollNumber: rollNumber.toUpperCase(), attendancePassword }),
-      });
-
-      if (!data.requiresPasswordSetup) {
-        toast({
-          title: "Account already exists",
-          description: "Use your StudentsConnect password on the login page.",
-        });
-        navigate("/login");
-        return;
-      }
-
-      setVerificationToken(data.verificationToken);
-      setVerifiedName(data.user?.fullName || "");
-      setVerified(true);
-      toast({ title: "Attendance verified", description: "Now set your StudentsConnect password." });
-    } catch (err: any) {
-      toast({ title: "Verification failed", description: err?.message || "Invalid attendance credentials.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!verified || !verificationToken) {
-      toast({ title: "Verify attendance first", description: "Complete JNTUA attendance verification before signup.", variant: "destructive" });
+    if (!rollNumber || !password) {
+      toast({ title: "Missing fields", description: "Please enter roll number and password.", variant: "destructive" });
       return;
     }
 
@@ -80,7 +34,7 @@ export default function Signup() {
       const data = await apiFetch<{ message: string; token: string }>("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rollNumber: rollNumber.toUpperCase(), password, verificationToken }),
+        body: JSON.stringify({ rollNumber, password }),
       });
 
       if (data?.token) {
@@ -127,46 +81,20 @@ export default function Signup() {
           </Link>
 
           <h1 className="font-display text-2xl font-bold mb-1">Create account</h1>
-          <p className="text-sm text-muted-foreground mb-6">Verify your JNTUA attendance account, then set StudentsConnect password</p>
+          <p className="text-sm text-muted-foreground mb-6">Start your journey on StudentsConnect</p>
 
-          <form className="space-y-4" onSubmit={handleVerifyAttendance}>
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-1.5">
               <Label htmlFor="rollNumber">Roll Number</Label>
               <Input
                 id="rollNumber"
                 placeholder="e.g. 21A91A0501"
                 value={rollNumber}
-                onChange={(e) => setRollNumber(e.target.value.toUpperCase())}
+                onChange={(e) => setRollNumber(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="attendancePassword">Attendance Password</Label>
-              <div className="relative">
-                <Input
-                  id="attendancePassword"
-                  type={showAttendancePass ? "text" : "password"}
-                  placeholder="Attendance portal password"
-                  value={attendancePassword}
-                  onChange={(e) => setAttendancePassword(e.target.value)}
-                />
-                <button type="button" onClick={() => setShowAttendancePass(!showAttendancePass)} className="absolute right-3 top-2.5 text-muted-foreground">
-                  {showAttendancePass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            <Button type="submit" className="w-full" variant="outline" disabled={loading}>
-              {loading ? "Verifying..." : "Verify Attendance"}
-            </Button>
-          </form>
-
-          <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
-            {verified ? (
-              <p className="text-sm text-muted-foreground">Verified as <span className="font-medium text-foreground">{verifiedName || rollNumber}</span></p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Complete attendance verification to continue.</p>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="password">StudentsConnect Password</Label>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input
                   id="password"

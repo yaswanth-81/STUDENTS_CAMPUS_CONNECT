@@ -118,10 +118,7 @@ export default function Profile() {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        const message = errData?.field
-          ? `${errData.message}. Please use a different ${errData.field}.`
-          : errData.message || "Failed to update profile. Please try again.";
-        throw new Error(message);
+        throw new Error(errData.message || "Failed to update profile. Please try again.");
       }
 
       const updatedData = await response.json();
