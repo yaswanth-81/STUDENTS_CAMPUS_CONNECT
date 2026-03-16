@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Search, PlusCircle, ArrowRight, ShoppingBag, Briefcase, Zap } from "lucide-react";
+import { Search, PlusCircle, ArrowRight, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { apiFetch, authHeader } from "@/lib/api";
@@ -128,8 +128,8 @@ export default function Dashboard() {
       {/* Quick links */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {[
-          { label: "My Orders", to: "/dashboard/orders", icon: ShoppingBag, count: orderCount },
-          { label: "My Services", to: "/dashboard/my-services", icon: Briefcase, count: myJobsCount },
+          { label: "My Orders", to: "/dashboard/orders", count: orderCount },
+          { label: "My Services", to: "/dashboard/my-services", count: myJobsCount },
         ].map((item, i) => (
           <motion.div
             key={item.label}
@@ -139,14 +139,11 @@ export default function Dashboard() {
           >
             <Link
               to={item.to}
-              className="flex items-center gap-2 sm:gap-4 rounded-2xl border border-border bg-card p-3 sm:p-5 hover:card-shadow-hover transition-all group"
+              className="rounded-2xl border border-border bg-card p-3 sm:p-5 hover:card-shadow-hover transition-all group"
             >
-              <div className="flex h-12 w-12 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-muted group-hover:bg-primary/10 transition-colors">
-                <item.icon className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-display text-lg sm:text-2xl font-semibold truncate">{item.label}</p>
-                <p className="text-base sm:text-lg text-muted-foreground">{item.count} items</p>
+              <div className="min-w-0 text-center sm:text-left">
+                <p className="font-display text-base sm:text-2xl font-semibold leading-tight whitespace-nowrap">{item.label}</p>
+                <p className="mt-1 text-sm sm:text-lg text-muted-foreground">{item.count} items</p>
               </div>
             </Link>
           </motion.div>
