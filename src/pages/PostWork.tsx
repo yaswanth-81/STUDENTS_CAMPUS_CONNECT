@@ -9,7 +9,7 @@ import { CATEGORIES } from "@/lib/mock-data";
 import { Upload, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useNavigate } from "react-router-dom";
-import { API_BASE_URL, apiFetch, authHeader } from "@/lib/api";
+import { apiFetch, authHeader } from "@/lib/api";
 
 export default function PostWork() {
   const [loading, setLoading] = useState(false);
@@ -120,31 +120,25 @@ export default function PostWork() {
         }
 
         const tokenHeader = authHeader();
-        const url = `${API_BASE_URL || ""}/api/work`;
-
-        await fetch(url, {
+        const created = await apiFetch<{ work?: { _id?: string }; message?: string; error?: string }>("/api/work", {
           method: "POST",
           headers: {
             ...(tokenHeader.Authorization ? { Authorization: tokenHeader.Authorization } : {}),
           },
           body: form,
-        }).then(async (res) => {
-          if (!res.ok) {
-            let msg = "Failed to post work. Please try again.";
-            try {
-              const data = await res.json();
-              // Show the backend's actual validation message if available
-              msg = data.message || msg;
-              // Make Mongoose validation errors readable
-              if (data.error && data.error.includes("Path `budget`")) {
-                msg = "Budget must be at least ₹39.";
-              }
-            } catch {
-              // ignore parse error
-            }
-            throw new Error(msg);
-          }
         });
+
+        const createdWorkId = created?.work?._id;
+        if (!createdWorkId) {
+          throw new Error("Task was created but no task ID was returned.");
+        }
+
+        toast({
+          title: "Task Posted!",
+          description: "Your task has been published. Students will start applying soon.",
+        });
+        navigate(`/dashboard/my-services/${createdWorkId}/applicants`);
+        return;
       }
       toast({
         title: isEdit ? "Task Updated!" : "Task Posted!",
