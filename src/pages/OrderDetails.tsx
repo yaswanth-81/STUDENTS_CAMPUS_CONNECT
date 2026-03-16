@@ -837,11 +837,6 @@ export default function OrderDetails() {
                             </div>
                           )}
 
-                          {fileUrl && kind === "file" && (
-                            <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                              This file type does not support inline preview here. Use Open or Download to view it.
-                            </div>
-                          )}
                         </div>
                       );
                     })}
