@@ -39,12 +39,17 @@ const updateMyProfile = async (req, res) => {
     ];
 
     const updates = {};
+    const unsets = {};
+    
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) {
         if (["email", "phoneNumber", "fullName", "branch", "course", "classYear", "semester"].includes(key)) {
           const normalized = normalizeOptional(req.body[key]);
-          // Only include field in update if it has a value, to avoid duplicate key errors on empty emails
-          if (normalized !== null && normalized !== undefined && String(normalized).trim() !== "") {
+          if (normalized === null || normalized === undefined || String(normalized).trim() === "") {
+            // For empty values, mark for unsetting (removes the field)
+            unsets[key] = "";
+          } else {
+            // Only include field in update if it has a value
             updates[key] = normalized;
           }
         } else {
@@ -66,9 +71,15 @@ const updateMyProfile = async (req, res) => {
       updates.qrCodeUrl = `data:${file.mimetype};base64,${base64}`;
     }
 
+    // Build the update operations
+    const updateOps = { $set: updates };
+    if (Object.keys(unsets).length > 0) {
+      updateOps.$unset = unsets;
+    }
+
     const user = await User.findByIdAndUpdate(
       req.userId,
-      { $set: updates },
+      updateOps,
       { new: true, runValidators: true }
     ).select("-password");
 

@@ -141,14 +141,14 @@ export default function Profile() {
       setSaving(true);
       const formData = new FormData();
       
-      // Only append non-empty values to avoid unique key conflicts
-      if (profile.fullName?.trim()) formData.append("fullName", profile.fullName);
-      if (profile.email?.trim()) formData.append("email", profile.email);
-      if (profile.phoneNumber?.trim()) formData.append("phoneNumber", profile.phoneNumber);
-      if (profile.branch?.trim()) formData.append("branch", profile.branch);
-      if (profile.course?.trim()) formData.append("course", profile.course);
-      if (profile.classYear?.trim()) formData.append("classYear", profile.classYear);
-      if (profile.semester?.trim()) formData.append("semester", profile.semester);
+      // Always append all fields - backend will handle empty values
+      formData.append("fullName", profile.fullName || "");
+      formData.append("email", profile.email || "");
+      formData.append("phoneNumber", profile.phoneNumber || "");
+      formData.append("branch", profile.branch || "");
+      formData.append("course", profile.course || "");
+      formData.append("classYear", profile.classYear || "");
+      formData.append("semester", profile.semester || "");
       
       if (profilePhotoFile) {
         formData.append("profilePhoto", profilePhotoFile);
