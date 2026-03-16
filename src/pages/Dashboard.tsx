@@ -139,9 +139,9 @@ export default function Dashboard() {
           >
             <Link
               to={item.to}
-              className="rounded-2xl border border-border bg-card p-3 sm:p-5 hover:card-shadow-hover transition-all group"
+              className="block w-full rounded-xl border border-border bg-card px-3 py-4 sm:px-5 sm:py-5 text-center sm:text-left hover:border-primary/30 hover:shadow-sm transition-all"
             >
-              <div className="min-w-0 text-center sm:text-left">
+              <div className="min-w-0">
                 <p className="font-display text-base sm:text-2xl font-semibold leading-tight whitespace-nowrap">{item.label}</p>
                 <p className="mt-1 text-sm sm:text-lg text-muted-foreground">{item.count} items</p>
               </div>
