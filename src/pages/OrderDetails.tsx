@@ -4,10 +4,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Send, CheckCheck, Check, XCircle, CheckCircle2,
   QrCode, Users, Calendar, DollarSign, AlertCircle, Loader2, MessageCircle,
+  Download, ExternalLink, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { apiFetch, authHeader } from "@/lib/api";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { apiFetch, authHeader, downloadFile } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +23,22 @@ type Msg = {
   seenBy: string[];
   timestamp: string;
 };
+
+type WorkAttachment = {
+  fileName?: string;
+  fileUrl?: string;
+};
+
+function getAttachmentKind(fileName?: string, fileUrl?: string) {
+  const normalized = `${fileName || ""} ${fileUrl || ""}`.toLowerCase();
+  if (/(\.png|\.jpe?g|\.gif|\.webp|\.bmp|\.svg)(\?|$)|^data:image\//.test(normalized)) {
+    return "image";
+  }
+  if (/(\.pdf)(\?|$)|^data:application\/pdf/.test(normalized)) {
+    return "pdf";
+  }
+  return "file";
+}
 
 function normalizePhoneForWhatsApp(phone?: string | null): string | null {
   if (!phone) return null;
@@ -150,6 +168,7 @@ export default function OrderDetails() {
   // Cancel reason flow
   const [cancelMode, setCancelMode] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Fetch logged-in user id FIRST (reliable, from JWT via profile endpoint)
   useEffect(() => {
@@ -283,9 +302,14 @@ export default function OrderDetails() {
 
   const orderStatus = order?.status ?? "pending";
   const paymentStatus = order?.paymentStatus ?? "unpaid";
+  const workDetails = order?.workId;
+  const workAttachments: WorkAttachment[] = Array.isArray(workDetails?.attachments)
+    ? workDetails.attachments
+    : [];
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <>
+      <div className="max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-muted transition-colors">
@@ -390,6 +414,18 @@ export default function OrderDetails() {
 
           {/* ── Action buttons (role-based) ──────────────────────────────── */}
           <div className="space-y-3">
+
+            {/* BOTH SIDES: View assignment details */}
+            {(isWorker || isClient) && (
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => setDetailsOpen(true)}
+              >
+                <FileText className="h-4 w-4" />
+                View Assignment Details
+              </Button>
+            )}
 
             {/* WORKER ONLY: Mark as Completed */}
             {isWorker && (orderStatus === "active" || orderStatus === "pending") && (
@@ -699,6 +735,134 @@ export default function OrderDetails() {
           )}
         </div>
       </div>
-    </div>
+
+      </div>
+
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden p-0">
+          <div className="flex h-full max-h-[85vh] flex-col">
+            <DialogHeader className="border-b border-border px-6 py-5 text-left">
+              <DialogTitle className="pr-8">{workDetails?.title || "Assignment Details"}</DialogTitle>
+              <DialogDescription>
+                Review the full assignment brief, deadline, budget, and attached files.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-border bg-muted/40 p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Category</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">{workDetails?.category || "—"}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-muted/40 p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Budget</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">₹{order?.price ?? workDetails?.budget ?? "—"}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-muted/40 p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Deadline</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {order?.deadline ? new Date(order.deadline).toLocaleDateString() : "—"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">Assignment Description</p>
+                <div className="rounded-2xl border border-border bg-card p-4 text-sm leading-6 text-muted-foreground whitespace-pre-wrap">
+                  {workDetails?.description || "No description provided."}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-semibold text-foreground">Attached Files</p>
+                </div>
+
+                {workAttachments.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                    No attachment was added for this assignment.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {workAttachments.map((attachment, index) => {
+                      const fileUrl = attachment.fileUrl || "";
+                      const fileName = attachment.fileName || `Attachment ${index + 1}`;
+                      const kind = getAttachmentKind(fileName, fileUrl);
+
+                      return (
+                        <div key={`${fileName}-${index}`} className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground break-all">{fileName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {kind === "image"
+                                  ? "Image preview available"
+                                  : kind === "pdf"
+                                  ? "PDF preview available"
+                                  : "Preview not available for this file type"}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => window.open(fileUrl, "_blank", "noopener,noreferrer")}
+                                disabled={!fileUrl}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                Open
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => downloadFile(fileUrl, fileName)}
+                                disabled={!fileUrl}
+                              >
+                                <Download className="h-4 w-4" />
+                                Download
+                              </Button>
+                            </div>
+                          </div>
+
+                          {fileUrl && kind === "image" && (
+                            <div className="overflow-hidden rounded-xl border border-border bg-muted/30 p-2">
+                              <img
+                                src={fileUrl}
+                                alt={fileName}
+                                className="max-h-[26rem] w-full rounded-lg object-contain"
+                              />
+                            </div>
+                          )}
+
+                          {fileUrl && kind === "pdf" && (
+                            <div className="overflow-hidden rounded-xl border border-border bg-white">
+                              <iframe
+                                src={fileUrl}
+                                title={fileName}
+                                className="h-[28rem] w-full"
+                              />
+                            </div>
+                          )}
+
+                          {fileUrl && kind === "file" && (
+                            <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                              This file type does not support inline preview here. Use Open or Download to view it.
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
