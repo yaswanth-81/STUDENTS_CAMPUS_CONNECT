@@ -52,14 +52,14 @@ export default function Orders() {
       try {
         setLoading(true);
         const headers = { ...authHeader() };
-        const [data, me] = await Promise.all([
+        const [data, me, appsData] = await Promise.all([
           apiFetch<{ orders: any[] }>("/api/orders/my", { headers }),
           apiFetch<{ _id: string }>("/api/profile/me", { headers }).catch(() => null),
+          apiFetch<{ applications: any[] }>("/api/application/my", { headers }).catch(() => ({ applications: [] })),
         ]);
 
         const rawOrders: any[] = data.orders || [];
-        const pendingApplications: any[] = data.pendingApplications || [];
-        const appliedToOthers: any[] = data.appliedToOthers || [];
+        const rawApplications: any[] = appsData.applications || [];
         const meId = me?._id ? String(me._id) : null;
 
         // Show worker-side orders: where I am the worker
@@ -75,12 +75,13 @@ export default function Orders() {
           itemType: "order",
         }));
 
-        const pendingApplicationItems = pendingApplications
+        const applicationItems = rawApplications
           .filter((app: any) => app?.workId)
+          .filter((app: any) => app.status === "pending" || app.status === "assigned_to_others")
           .map((app: any) => ({
             _id: `application-${app._id}`,
             itemType: "application",
-            status: "request_sent",
+            status: app.status === "assigned_to_others" ? "assigned_to_others" : "request_sent",
             createdAt: app.createdAt,
             applicationId: app._id,
             workId: app.workId,
@@ -90,22 +91,7 @@ export default function Orders() {
             deadline: app.workId?.deadline,
           }));
 
-        const assignedToOthersItems = appliedToOthers
-          .filter((app: any) => app?.workId)
-          .map((app: any) => ({
-            _id: `application-assigned-${app._id}`,
-            itemType: "application",
-            status: "assigned_to_others",
-            createdAt: app.createdAt,
-            applicationId: app._id,
-            workId: app.workId,
-            originalWorkId: app.workId?._id,
-            clientId: app.workId?.postedBy,
-            price: app.workId?.budget ?? 0,
-            deadline: app.workId?.deadline,
-          }));
-
-        const merged = [...workerOrderItems, ...pendingApplicationItems, ...assignedToOthersItems].sort(
+        const merged = [...workerOrderItems, ...applicationItems].sort(
           (a: any, b: any) =>
             new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         );
