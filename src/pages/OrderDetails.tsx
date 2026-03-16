@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Send, CheckCheck, Check, XCircle, CheckCircle2,
-  QrCode, Users, Calendar, DollarSign, AlertCircle, Loader2,
+  QrCode, Users, Calendar, DollarSign, AlertCircle, Loader2, MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,16 @@ type Msg = {
   seenBy: string[];
   timestamp: string;
 };
+
+function normalizePhoneForWhatsApp(phone?: string | null): string | null {
+  if (!phone) return null;
+  const digits = String(phone).replace(/\D/g, "");
+  if (!digits) return null;
+  // If user saved local 10-digit Indian number, prepend country code.
+  if (digits.length === 10) return `91${digits}`;
+  if (digits.length > 10) return digits;
+  return null;
+}
 
 // ── Chat bubble ───────────────────────────────────────────────────────────────
 
@@ -248,6 +258,21 @@ export default function OrderDetails() {
     .charAt(0)
     .toUpperCase();
 
+  const myUser = isClient ? clientUser : workerUser;
+  const myWaNumber = normalizePhoneForWhatsApp(myUser?.phoneNumber);
+  const otherWaNumber = normalizePhoneForWhatsApp(otherUser?.phoneNumber);
+  const canConnectOnWhatsApp = Boolean(myWaNumber && otherWaNumber);
+
+  const myDisplayName = myUser?.fullName || myUser?.rollNumber || "Student";
+  const otherDisplayName = otherUser?.fullName || otherUser?.rollNumber || "Student";
+  const bothMissingPhone = !myWaNumber && !otherWaNumber;
+  const myPhoneMissing = !myWaNumber;
+  const otherPhoneMissing = !otherWaNumber;
+  const whatsappMessage = encodeURIComponent(
+    `Hi ${otherDisplayName}, this is ${myDisplayName} from StudentsConnect regarding the order \"${order?.workId?.title || "work"}\". Let's coordinate the details here.`
+  );
+  const whatsappUrl = otherWaNumber ? `https://wa.me/${otherWaNumber}?text=${whatsappMessage}` : "";
+
   const orderStatus = order?.status ?? "pending";
   const paymentStatus = order?.paymentStatus ?? "unpaid";
 
@@ -318,6 +343,39 @@ export default function OrderDetails() {
                 <span>Due: {order?.deadline ? new Date(order.deadline).toLocaleDateString() : "—"}</span>
               </div>
             </div>
+
+            {canConnectOnWhatsApp ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => window.open(whatsappUrl, "_blank", "noopener,noreferrer")}
+              >
+                <MessageCircle className="h-4 w-4 text-green-600" />
+                Professional Connect on WhatsApp
+              </Button>
+            ) : (
+              <div className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg p-2">
+                {bothMissingPhone
+                  ? "Both users need mobile numbers in profile to connect through WhatsApp."
+                  : myPhoneMissing
+                  ? "Add your mobile number in profile to connect through WhatsApp."
+                  : otherPhoneMissing
+                  ? "The other person has not added a mobile number yet, so WhatsApp connect is unavailable."
+                  : "Update mobile number in profile to connect through WhatsApp."}
+                {myPhoneMissing && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate("/dashboard/profile")}
+                      className="underline font-medium"
+                    >
+                      Go to Profile
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── Action buttons (role-based) ──────────────────────────────── */}
