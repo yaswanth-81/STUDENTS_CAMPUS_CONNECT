@@ -125,6 +125,34 @@ export default function Dashboard() {
         </button>
       </motion.div>
 
+      {/* Quick links */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {[
+          { label: "My Orders", to: "/dashboard/orders", icon: ShoppingBag, count: orderCount },
+          { label: "My Services", to: "/dashboard/my-services", icon: Briefcase, count: myJobsCount },
+        ].map((item, i) => (
+          <motion.div
+            key={item.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 + i * 0.05 }}
+          >
+            <Link
+              to={item.to}
+              className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 hover:card-shadow-hover transition-all group"
+            >
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-muted group-hover:bg-primary/10 transition-colors">
+                <item.icon className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <div>
+                <p className="font-display text-2xl font-semibold">{item.label}</p>
+                <p className="text-lg text-muted-foreground">{item.count} items</p>
+              </div>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
+
       {/* Two primary action cards */}
       <div className="grid sm:grid-cols-2 gap-6">
         <motion.div
@@ -176,34 +204,6 @@ export default function Dashboard() {
             </div>
           </Link>
         </motion.div>
-      </div>
-
-      {/* Quick links */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "My Orders", to: "/dashboard/orders", icon: ShoppingBag, count: orderCount },
-          { label: "My Services", to: "/dashboard/my-services", icon: Briefcase, count: myJobsCount },
-        ].map((item, i) => (
-          <motion.div
-            key={item.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 + i * 0.05 }}
-          >
-            <Link
-              to={item.to}
-              className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:card-shadow-hover transition-all group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                <item.icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{item.count} items</p>
-              </div>
-            </Link>
-          </motion.div>
-        ))}
       </div>
 
       {/* Recent orders */}
