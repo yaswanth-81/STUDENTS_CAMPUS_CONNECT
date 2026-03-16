@@ -414,4 +414,4 @@ npm install
 
 ---
 
-*Built with ❤️ for campus students — StudentsConnect © 2026*
+*Built with ❤️ for campus students @JNTUA — StudentsConnect © 2026*
