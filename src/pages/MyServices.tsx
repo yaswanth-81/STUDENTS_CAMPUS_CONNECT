@@ -3,7 +3,6 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
   ArrowLeft,
   Users,
   Calendar,
@@ -107,7 +106,14 @@ export default function MyServices() {
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-display font-semibold text-sm truncate">{job.title}</p>
+                  <button
+                    type="button"
+                    onClick={() => handleView(job)}
+                    className="font-display font-semibold text-sm truncate text-left hover:underline"
+                    title="View applicants / order"
+                  >
+                    {job.title}
+                  </button>
                   <p className="text-xs text-muted-foreground line-clamp-1">{job.description}</p>
                   <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -145,14 +151,6 @@ export default function MyServices() {
                   </Badge>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleView(job)}
-                    title="View applicants / order"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
