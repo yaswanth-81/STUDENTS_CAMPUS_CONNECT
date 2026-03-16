@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,11 @@ import { apiFetch, authHeader } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_CONFIG: Record<string, { label: string; icon: any; className: string }> = {
+  request_sent: {
+    label: "Request Sent",
+    icon: Clock,
+    className: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+  },
   pending: {
     label: "In Progress",
     icon: Clock,
@@ -48,6 +53,7 @@ export default function Orders() {
         ]);
 
         const rawOrders: any[] = data.orders || [];
+        const pendingApplications: any[] = data.pendingApplications || [];
         const meId = me?._id ? String(me._id) : null;
 
         // Show worker-side orders: where I am the worker
@@ -58,7 +64,32 @@ export default function Orders() {
             })
           : rawOrders;
 
-        setOrders(workerOrders);
+        const workerOrderItems = workerOrders.map((o: any) => ({
+          ...o,
+          itemType: "order",
+        }));
+
+        const pendingApplicationItems = pendingApplications
+          .filter((app: any) => app?.workId)
+          .map((app: any) => ({
+            _id: `application-${app._id}`,
+            itemType: "application",
+            status: "request_sent",
+            createdAt: app.createdAt,
+            applicationId: app._id,
+            workId: app.workId,
+            originalWorkId: app.workId?._id,
+            clientId: app.workId?.postedBy,
+            price: app.workId?.budget ?? 0,
+            deadline: app.workId?.deadline,
+          }));
+
+        const merged = [...workerOrderItems, ...pendingApplicationItems].sort(
+          (a: any, b: any) =>
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+
+        setOrders(merged);
       } catch (err: any) {
         toast({ title: "Error", description: err?.message || "Failed to load orders", variant: "destructive" });
       } finally {
@@ -72,7 +103,7 @@ export default function Orders() {
     tab === "all"
       ? orders
       : tab === "active"
-      ? orders.filter((o) => o.status === "active" || o.status === "pending")
+      ? orders.filter((o) => o.status === "active" || o.status === "pending" || o.status === "request_sent")
       : tab === "completed"
       ? orders.filter((o) => o.status === "completed")
       : tab === "cancelled"
@@ -87,7 +118,7 @@ export default function Orders() {
         </button>
         <div>
           <h1 className="font-display text-2xl font-bold">My Orders</h1>
-          <p className="text-sm text-muted-foreground">Work assigned to you</p>
+          <p className="text-sm text-muted-foreground">Your assigned work and sent requests</p>
         </div>
       </div>
 
@@ -111,7 +142,15 @@ export default function Orders() {
               const title = order.workId?.title || "Order";
               const deadline = order.deadline ? new Date(order.deadline).toLocaleDateString() : "";
               const price = order.price ?? order.workId?.budget ?? 0;
-              const clientName = order.clientId?.fullName || order.clientId?.rollNumber || "Client";
+              const clientName =
+                order.itemType === "application"
+                  ? "Awaiting client response"
+                  : order.clientId?.fullName || order.clientId?.rollNumber || "Client";
+
+              const destination =
+                order.itemType === "application"
+                  ? `/dashboard/work/${order.originalWorkId}/apply`
+                  : `/dashboard/orders/${order._id}`;
 
               return (
                 <motion.div
@@ -120,7 +159,7 @@ export default function Orders() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <Link to={`/dashboard/orders/${order._id}`}>
+                  <Link to={destination}>
                     <div className="p-4 rounded-xl border border-border bg-card hover:card-shadow-hover transition-all flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -131,7 +170,7 @@ export default function Orders() {
                         </div>
                         <p className="font-medium text-sm truncate">{title}</p>
                         <p className="text-xs text-muted-foreground">
-                          From: {clientName}
+                          {order.itemType === "application" ? "Status:" : "From:"} {clientName}
                           {deadline ? ` · Due: ${deadline}` : ""}
                         </p>
                       </div>
