@@ -13,6 +13,11 @@ const STATUS_CONFIG: Record<string, { label: string; icon: any; className: strin
     icon: Clock,
     className: "bg-amber-500/10 text-amber-600 border-amber-500/30",
   },
+  assigned_to_others: {
+    label: "Assigned to Others",
+    icon: XCircle,
+    className: "bg-slate-500/10 text-slate-600 border-slate-500/30",
+  },
   pending: {
     label: "In Progress",
     icon: Clock,
@@ -54,6 +59,7 @@ export default function Orders() {
 
         const rawOrders: any[] = data.orders || [];
         const pendingApplications: any[] = data.pendingApplications || [];
+        const appliedToOthers: any[] = data.appliedToOthers || [];
         const meId = me?._id ? String(me._id) : null;
 
         // Show worker-side orders: where I am the worker
@@ -84,7 +90,22 @@ export default function Orders() {
             deadline: app.workId?.deadline,
           }));
 
-        const merged = [...workerOrderItems, ...pendingApplicationItems].sort(
+        const assignedToOthersItems = appliedToOthers
+          .filter((app: any) => app?.workId)
+          .map((app: any) => ({
+            _id: `application-assigned-${app._id}`,
+            itemType: "application",
+            status: "assigned_to_others",
+            createdAt: app.createdAt,
+            applicationId: app._id,
+            workId: app.workId,
+            originalWorkId: app.workId?._id,
+            clientId: app.workId?.postedBy,
+            price: app.workId?.budget ?? 0,
+            deadline: app.workId?.deadline,
+          }));
+
+        const merged = [...workerOrderItems, ...pendingApplicationItems, ...assignedToOthersItems].sort(
           (a: any, b: any) =>
             new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         );
@@ -107,7 +128,7 @@ export default function Orders() {
       : tab === "completed"
       ? orders.filter((o) => o.status === "completed")
       : tab === "cancelled"
-      ? orders.filter((o) => o.status === "cancelled")
+      ? orders.filter((o) => o.status === "cancelled" || o.status === "assigned_to_others")
       : orders;
 
   return (
@@ -144,7 +165,9 @@ export default function Orders() {
               const price = order.price ?? order.workId?.budget ?? 0;
               const clientName =
                 order.itemType === "application"
-                  ? "Awaiting client response"
+                  ? order.status === "assigned_to_others"
+                    ? "This work was given to another student"
+                    : "Awaiting client response"
                   : order.clientId?.fullName || order.clientId?.rollNumber || "Client";
 
               const destination =
