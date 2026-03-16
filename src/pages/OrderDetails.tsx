@@ -350,8 +350,10 @@ export default function OrderDetails() {
                 className="w-full gap-2"
                 onClick={() => window.open(whatsappUrl, "_blank", "noopener,noreferrer")}
               >
-                <MessageCircle className="h-4 w-4 text-green-600" />
-                Professional Connect on WhatsApp
+                <span className="h-5 w-5 rounded-full bg-green-500 inline-flex items-center justify-center">
+                  <MessageCircle className="h-3.5 w-3.5 text-white" />
+                </span>
+                Connect through WhatsApp
               </Button>
             ) : (
               <div className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg p-2">
