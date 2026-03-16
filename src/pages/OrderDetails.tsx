@@ -119,7 +119,8 @@ function StatusBadge({ status, paymentStatus }: { status: string; paymentStatus?
     cancelled: "Cancelled",
   };
 
-  const displayStatus = status === "completed" && paymentStatus === "unpaid"
+  const isPaymentPending = status === "completed" && (!paymentStatus || paymentStatus === "unpaid");
+  const displayStatus = isPaymentPending
     ? "payment_pending"
     : status;
 

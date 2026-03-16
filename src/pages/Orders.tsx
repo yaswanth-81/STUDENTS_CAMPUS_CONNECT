@@ -120,10 +120,10 @@ export default function Orders() {
             o.status === "active" ||
             o.status === "pending" ||
             o.status === "request_sent" ||
-            (o.itemType === "order" && o.status === "completed" && o.paymentStatus === "unpaid")
+            (o.itemType === "order" && o.status === "completed" && (!o.paymentStatus || o.paymentStatus === "unpaid"))
         )
       : tab === "completed"
-      ? orders.filter((o) => o.status === "completed" && o.paymentStatus !== "unpaid")
+      ? orders.filter((o) => o.status === "completed" && o.paymentStatus && o.paymentStatus !== "unpaid")
       : tab === "cancelled"
       ? orders.filter((o) => o.status === "cancelled" || o.status === "assigned_to_others")
       : orders;
@@ -156,7 +156,7 @@ export default function Orders() {
           ) : (
             filtered.map((order, i) => {
               const displayStatus =
-                order.itemType === "order" && order.status === "completed" && order.paymentStatus === "unpaid"
+                order.itemType === "order" && order.status === "completed" && (!order.paymentStatus || order.paymentStatus === "unpaid")
                   ? "payment_pending"
                   : order.status;
               const config = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.active;
