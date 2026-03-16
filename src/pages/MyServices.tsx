@@ -99,21 +99,19 @@ export default function MyServices() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
             >
-              <div className="p-5 rounded-xl border border-border bg-card hover:card-shadow-hover transition-all flex flex-col sm:flex-row sm:items-center gap-4">
+              <div 
+                onClick={() => handleView(job)}
+                className="cursor-pointer p-5 rounded-xl border border-border bg-card hover:card-shadow-hover transition-all flex flex-col sm:flex-row sm:items-center gap-4"
+              >
                 <div className="h-20 w-28 rounded-lg hero-gradient flex items-center justify-center shrink-0">
                   <span className="text-xs font-bold gradient-text opacity-40">
                     {(job.category || "").toString().toUpperCase()}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => handleView(job)}
-                    className="font-display font-semibold text-sm truncate text-left hover:underline"
-                    title="View applicants / order"
-                  >
+                  <div className="font-display font-semibold text-sm truncate text-left">
                     {job.title}
-                  </button>
+                  </div>
                   <p className="text-xs text-muted-foreground line-clamp-1">{job.description}</p>
                   <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -156,11 +154,12 @@ export default function MyServices() {
                     size="sm"
                     disabled={job.status === "in-progress" || job.status === "assigned"}
                     title={job.status === "in-progress" ? "Can't edit while assigned" : "Edit"}
-                    onClick={() =>
+                    onClick={(e) => {
+                      e.stopPropagation();
                       navigate("/dashboard/post-work", {
                         state: { jobToEdit: job },
-                      })
-                    }
+                      });
+                    }}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -170,7 +169,8 @@ export default function MyServices() {
                     className="text-destructive hover:text-destructive"
                     disabled={deletingId === job._id || job.status === "in-progress" || job.status === "assigned"}
                     title={job.status === "in-progress" ? "Can't delete while assigned — cancel the order first" : "Delete"}
-                    onClick={async () => {
+                    onClick={async (e) => {
+                      e.stopPropagation();
                       try {
                         setDeletingId(job._id);
                         await apiFetch(`/api/work/${job._id}`, {
