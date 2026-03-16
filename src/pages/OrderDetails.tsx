@@ -499,12 +499,16 @@ export default function OrderDetails() {
                             headers: { ...authHeader(), "Content-Type": "application/json" },
                             body: JSON.stringify({ method: "meeting" }),
                           });
+                          await apiFetch(`/api/orders/${orderId}/payment-done`, {
+                            method: "PATCH",
+                            headers: { ...authHeader(), "Content-Type": "application/json" },
+                          });
                           await apiFetch("/api/chat/message", {
                             method: "POST",
                             headers: { ...authHeader(), "Content-Type": "application/json" },
                             body: JSON.stringify({
                               orderId,
-                              message: `💵 I'll pay by meeting bro! Let's meet up — I'll bring the cash and take the assignment directly. Let me know when and where you're free! 📍`,
+                              message: `💵 Payment confirmed by meeting. Let's meet up to exchange payment and assignment. Let me know when and where you're free! 📍`,
                             }),
                           });
                         })
@@ -515,34 +519,6 @@ export default function OrderDetails() {
                         : <Users className="h-4 w-4" />}
                       Pay by Meeting
                     </Button>
-
-                    {order?.paymentMethod === "meeting" && (
-                      <Button
-                        className="w-full gradient-bg text-primary-foreground border-0 gap-2"
-                        disabled={actionLoading === "pay-done"}
-                        onClick={() =>
-                          doAction("pay-done", async () => {
-                            await apiFetch(`/api/orders/${orderId}/payment-done`, {
-                              method: "PATCH",
-                              headers: { ...authHeader(), "Content-Type": "application/json" },
-                            });
-                            await apiFetch("/api/chat/message", {
-                              method: "POST",
-                              headers: { ...authHeader(), "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                orderId,
-                                message: `✅ Payment done bro! I'll pay by meeting and take the assignment directly. Let's fix a place to meet — let me know! 🤝📍`,
-                              }),
-                            });
-                          })
-                        }
-                      >
-                        {actionLoading === "pay-done"
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : <CheckCircle2 className="h-4 w-4" />}
-                        Payment Done ✓
-                      </Button>
-                    )}
                   </div>
                 )}
               </motion.div>
