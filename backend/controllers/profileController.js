@@ -42,7 +42,11 @@ const updateMyProfile = async (req, res) => {
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) {
         if (["email", "phoneNumber", "fullName", "branch", "course", "classYear", "semester"].includes(key)) {
-          updates[key] = normalizeOptional(req.body[key]);
+          const normalized = normalizeOptional(req.body[key]);
+          // Only include field in update if it has a value, to avoid duplicate key errors on empty emails
+          if (normalized !== null) {
+            updates[key] = normalized;
+          }
         } else {
           updates[key] = req.body[key];
         }
@@ -129,9 +133,55 @@ const getAvailableUsers = async (req, res) => {
   }
 };
 
+// @desc    Delete profile photo
+// @route   DELETE /api/profile/me/photo
+// @access  Private
+const deleteProfilePhoto = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { $unset: { profilePhotoUrl: "" } },
+      { new: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ message: "Profile photo deleted", user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// @desc    Delete QR code
+// @route   DELETE /api/profile/me/qr
+// @access  Private
+const deleteQrCode = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { $unset: { qrCodeUrl: "" } },
+      { new: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ message: "QR code deleted", user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   getMyProfile,
   updateMyProfile,
   getUserProfileById,
   getAvailableUsers,
+  deleteProfilePhoto,
+  deleteQrCode,
 };

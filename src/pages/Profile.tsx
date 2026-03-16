@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Calendar, Edit, ArrowLeft, Image as ImageIcon, Phone, QrCode, Upload } from "lucide-react";
+import { MapPin, Calendar, Edit, ArrowLeft, Image as ImageIcon, Phone, QrCode, Upload, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,6 +84,54 @@ export default function Profile() {
         setQrCodePreview(event.target?.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDeleteProfilePhoto = async () => {
+    try {
+      setSaving(true);
+      const response = await fetch(`${API_BASE_URL}/api/profile/me/photo`, {
+        method: "DELETE",
+        headers: { ...authHeader() },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete profile photo");
+      }
+
+      const data = await response.json();
+      setProfile(data.user);
+      setProfilePhotoFile(null);
+      setProfilePhotoPreview(null);
+      toast({ title: "Profile photo deleted", description: "Your profile photo has been removed." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to delete profile photo", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteQrCode = async () => {
+    try {
+      setSaving(true);
+      const response = await fetch(`${API_BASE_URL}/api/profile/me/qr`, {
+        method: "DELETE",
+        headers: { ...authHeader() },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete QR code");
+      }
+
+      const data = await response.json();
+      setProfile(data.user);
+      setQrCodeFile(null);
+      setQrCodePreview(null);
+      toast({ title: "QR code deleted", description: "Your payment QR code has been removed." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to delete QR code", variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -313,6 +361,18 @@ export default function Profile() {
                       )}
                     </label>
                   </div>
+                  {(profile?.profilePhotoUrl || profilePhotoPreview) && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDeleteProfilePhoto}
+                      disabled={saving}
+                      className="w-full gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" /> Delete Photo
+                    </Button>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Payment QR Code</Label>
@@ -337,6 +397,18 @@ export default function Profile() {
                       )}
                     </label>
                   </div>
+                  {(profile?.qrCodeUrl || qrCodePreview) && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDeleteQrCode}
+                      disabled={saving}
+                      className="w-full gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" /> Delete QR Code
+                    </Button>
+                  )}
                 </div>
               </div>
               <div className="space-y-1.5">
