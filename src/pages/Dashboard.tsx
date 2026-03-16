@@ -126,7 +126,7 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Quick links */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {[
           { label: "My Orders", to: "/dashboard/orders", icon: ShoppingBag, count: orderCount },
           { label: "My Services", to: "/dashboard/my-services", icon: Briefcase, count: myJobsCount },
@@ -139,14 +139,14 @@ export default function Dashboard() {
           >
             <Link
               to={item.to}
-              className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 hover:card-shadow-hover transition-all group"
+              className="flex items-center gap-2 sm:gap-4 rounded-2xl border border-border bg-card p-3 sm:p-5 hover:card-shadow-hover transition-all group"
             >
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-muted group-hover:bg-primary/10 transition-colors">
-                <item.icon className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+              <div className="flex h-12 w-12 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-muted group-hover:bg-primary/10 transition-colors">
+                <item.icon className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>
-              <div>
-                <p className="font-display text-2xl font-semibold">{item.label}</p>
-                <p className="text-lg text-muted-foreground">{item.count} items</p>
+              <div className="min-w-0">
+                <p className="font-display text-lg sm:text-2xl font-semibold truncate">{item.label}</p>
+                <p className="text-base sm:text-lg text-muted-foreground">{item.count} items</p>
               </div>
             </Link>
           </motion.div>
