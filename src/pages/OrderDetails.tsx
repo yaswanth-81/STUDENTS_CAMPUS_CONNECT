@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Send, CheckCheck, Check, XCircle, CheckCircle2,
   QrCode, Users, Calendar, DollarSign, AlertCircle, Loader2, MessageCircle,
-  Download, ExternalLink, FileText,
+  Download, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -804,17 +804,6 @@ export default function OrderDetails() {
                               </p>
                             </div>
                             <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="gap-2"
-                                onClick={() => window.open(fileUrl, "_blank", "noopener,noreferrer")}
-                                disabled={!fileUrl}
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                                Open
-                              </Button>
                               <Button
                                 type="button"
                                 size="sm"
