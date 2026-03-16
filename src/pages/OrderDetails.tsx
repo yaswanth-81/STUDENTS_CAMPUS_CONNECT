@@ -103,22 +103,29 @@ function Bubble({ msg, myId }: { msg: Msg; myId: string }) {
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, paymentStatus }: { status: string; paymentStatus?: string }) {
   const map: Record<string, string> = {
     pending: "bg-amber-500/15 text-amber-600 border-amber-500/30",
     active: "bg-blue-500/15 text-blue-600 border-blue-500/30",
     completed: "bg-accent/15 text-accent border-accent/30",
+    payment_pending: "bg-orange-500/15 text-orange-600 border-orange-500/30",
     cancelled: "bg-destructive/15 text-destructive border-destructive/30",
   };
   const label: Record<string, string> = {
     pending: "Pending",
     active: "In Progress",
     completed: "Completed",
+    payment_pending: "Payment Pending",
     cancelled: "Cancelled",
   };
+
+  const displayStatus = status === "completed" && paymentStatus === "unpaid"
+    ? "payment_pending"
+    : status;
+
   return (
-    <Badge variant="outline" className={map[status] || "bg-muted"}>
-      {label[status] || status}
+    <Badge variant="outline" className={map[displayStatus] || "bg-muted"}>
+      {label[displayStatus] || displayStatus}
     </Badge>
   );
 }
@@ -289,7 +296,7 @@ export default function OrderDetails() {
           </h1>
           <p className="text-xs text-muted-foreground font-mono">{orderId}</p>
         </div>
-        <StatusBadge status={orderStatus} />
+        <StatusBadge status={orderStatus} paymentStatus={paymentStatus} />
       </div>
 
       <div className="grid lg:grid-cols-5 gap-5">

@@ -33,6 +33,11 @@ const STATUS_CONFIG: Record<string, { label: string; icon: any; className: strin
     icon: CheckCircle2,
     className: "bg-accent/10 text-accent border-accent/30",
   },
+  payment_pending: {
+    label: "Payment Pending",
+    icon: Clock,
+    className: "bg-orange-500/10 text-orange-600 border-orange-500/30",
+  },
   cancelled: {
     label: "Cancelled",
     icon: XCircle,
@@ -110,9 +115,15 @@ export default function Orders() {
     tab === "all"
       ? orders
       : tab === "active"
-      ? orders.filter((o) => o.status === "active" || o.status === "pending" || o.status === "request_sent")
+      ? orders.filter(
+          (o) =>
+            o.status === "active" ||
+            o.status === "pending" ||
+            o.status === "request_sent" ||
+            (o.itemType === "order" && o.status === "completed" && o.paymentStatus === "unpaid")
+        )
       : tab === "completed"
-      ? orders.filter((o) => o.status === "completed")
+      ? orders.filter((o) => o.status === "completed" && o.paymentStatus !== "unpaid")
       : tab === "cancelled"
       ? orders.filter((o) => o.status === "cancelled" || o.status === "assigned_to_others")
       : orders;
@@ -144,7 +155,11 @@ export default function Orders() {
             <p className="text-center text-muted-foreground py-12">No orders found.</p>
           ) : (
             filtered.map((order, i) => {
-              const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.active;
+              const displayStatus =
+                order.itemType === "order" && order.status === "completed" && order.paymentStatus === "unpaid"
+                  ? "payment_pending"
+                  : order.status;
+              const config = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.active;
               const Icon = config.icon;
               const title = order.workId?.title || "Order";
               const deadline = order.deadline ? new Date(order.deadline).toLocaleDateString() : "";
