@@ -44,7 +44,7 @@ const updateMyProfile = async (req, res) => {
         if (["email", "phoneNumber", "fullName", "branch", "course", "classYear", "semester"].includes(key)) {
           const normalized = normalizeOptional(req.body[key]);
           // Only include field in update if it has a value, to avoid duplicate key errors on empty emails
-          if (normalized !== null) {
+          if (normalized !== null && normalized !== undefined && String(normalized).trim() !== "") {
             updates[key] = normalized;
           }
         } else {
